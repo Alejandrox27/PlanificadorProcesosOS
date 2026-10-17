@@ -3,6 +3,7 @@
 #include <queue>
 #include <string>
 #include <vector>
+
 // Simulador de Planificador de Procesos de un sistema operativo
 /*imita el comportamiento del sistema operativo (como Linux o Windows)
  cuando debe decidir qué programa o tarea tiene acceso al procesador (CPU) en
@@ -22,6 +23,7 @@ struct Proceso {
   string nombre;
   int prioridad; // 1-2: Alta prioridad, 3 o mas: Prioridad normal
   int tiempo_restante;
+  int tiempo_inicial;
 };
 
 // Operador para comparar dos procesos y determinar cual tiene mayor prioridad
@@ -45,15 +47,15 @@ public:
   }
 };
 
-// 3. Clase Pila de Historial (LIFO)
+// 3. Clase Pila de Historial (LIFO: Last In First Out)
 class PilaHistorial {
 private:
-  NodoPila *cima;
+  NodoPila *cabeza;
   int tamano;
 
 public:
   PilaHistorial() {
-    cima = nullptr;
+    cabeza = nullptr;
     tamano = 0;
   }
 
@@ -63,13 +65,13 @@ public:
     }
   }
 
-  bool esVacia() { return cima == nullptr; }
+  bool esVacia() { return cabeza == nullptr; }
 
   // PUSH: Inserta el proceso finalizado en la cima
   void push(Proceso p) {
     NodoPila *nuevo = new NodoPila(p);
-    nuevo->sig = cima;
-    cima = nuevo;
+    nuevo->sig = cabeza;
+    cabeza = nuevo;
     tamano++;
   }
 
@@ -79,9 +81,9 @@ public:
       cout << "La pila esta vacia.\n";
       return {-1, "NULO", 0, 0};
     }
-    NodoPila *aux = cima;
+    NodoPila *aux = cabeza;
     Proceso p = aux->proceso;
-    cima = cima->sig;
+    cabeza = cabeza->sig;
     delete aux;
     tamano--;
     return p;
@@ -90,7 +92,7 @@ public:
   // TOP / PEEK: Consulta el proceso en la cima sin eliminarlo
   Proceso top() {
     if (!esVacia()) {
-      return cima->proceso;
+      return cabeza->proceso;
     }
     return {-1, "NULO", 0, 0};
   }
@@ -98,6 +100,7 @@ public:
   int obtenerTamano() { return tamano; }
 };
 
+// 4. Clase que controla todo el proceso de planificacion de tareas
 class Planificador {
 private:
   priority_queue<Proceso, vector<Proceso>, CompararPrioridad>
@@ -107,20 +110,26 @@ private:
   PilaHistorial
       historial; // Estructura 3: Pila (Historial de procesos finalizados)
   int quantum;   // Tiempo de CPU asignado por turno (ej. 2 segundos)
+  int contadorPID;
 
 public:
-  Planificador(int q) { quantum = q; }
+  Planificador(int q) {
+    quantum = q;
+    contadorPID = 100;
+  }
 
   // Agregar proceso a la estructura correspondiente
-  void agregarProceso(int id, string nombre, int prioridad, int tiempo) {
-    Proceso p = {id, nombre, prioridad, tiempo};
+  void agregarProceso(string nombre, int prioridad, int tiempo) {
+    contadorPID++;
+    Proceso p = {contadorPID, nombre, prioridad, tiempo, tiempo};
     if (prioridad <= 2) {
       colaPrioridad.push(p);
-      cout << "[+] Proceso '" << nombre << "' agregado a COLA DE PRIORIDAD.\n";
+      cout << "\n[+] Proceso '" << nombre << "' (PID: " << contadorPID
+           << ") agregado a COLA DE PRIORIDAD.\n";
     } else {
       colaCircular.push(p);
-      cout << "[+] Proceso '" << nombre
-           << "' agregado a COLA CIRCULAR (Round-Robin).\n";
+      cout << "\n[+] Proceso '" << nombre << "' (PID: " << contadorPID
+           << ") agregado a COLA CIRCULAR (Round-Robin).\n";
     }
   }
 
@@ -170,9 +179,157 @@ public:
     }
   }
 
-  void mostrar_historial() {}
+  void ejecutar_todo() {
+    while (!colaPrioridad.empty() || !colaCircular.empty()) {
+      ejecutar_paso();
+    }
+  }
+
+  void deshacer_ultimo() {
+    if (historial.esVacia()) {
+      cout << "\n[DESHACER] El historial esta vacio. No hay procesos para "
+              "desapilar.\n";
+      return;
+    }
+    Proceso p = historial.pop();
+    cout << "\n[DESHACER] Se ha sacado de la pila el proceso PID: " << p.id
+         << " (" << p.nombre << "). Reinsertando a la CPU...\n";
+
+    p.tiempo_restante = p.tiempo_inicial;
+    if (p.prioridad <= 2) {
+      colaPrioridad.push(p);
+    } else {
+      colaCircular.push(p);
+    }
+  }
+
+  void ver_estado_sistema() {
+    cout << "\n================ ESTADO ACTUAL DEL SISTEMA ================\n";
+
+    // Inspección de Cola de Prioridad
+    cout << "[COLA DE PRIORIDAD (Alta Urgencia)] Elementos: "
+         << colaPrioridad.size() << "\n";
+    auto auxPrioridad = colaPrioridad;
+    while (!auxPrioridad.empty()) {
+      Proceso p = auxPrioridad.top();
+      auxPrioridad.pop();
+      cout << "  -> PID: " << p.id << " | " << p.nombre
+           << " | Prio: " << p.prioridad
+           << " | T. Restante: " << p.tiempo_restante << "s\n";
+    }
+
+    // Inspección de Cola Circular
+    cout << "\n[COLA CIRCULAR (Round-Robin)] Elementos: " << colaCircular.size()
+         << "\n";
+    auto auxCircular = colaCircular;
+    while (!auxCircular.empty()) {
+      Proceso p = auxCircular.front();
+      auxCircular.pop();
+      cout << "  -> PID: " << p.id << " | " << p.nombre
+           << " | Prio: " << p.prioridad
+           << " | T. Restante: " << p.tiempo_restante << "s\n";
+    }
+
+    cout << "\n[PILA DE HISTORIAL] Procesos Finalizados: "
+         << historial.obtenerTamano() << "\n";
+    if (!historial.esVacia()) {
+      Proceso topP = historial.top();
+      cout << "  -> Cima actual: PID " << topP.id << " (" << topP.nombre
+           << ")\n";
+    }
+    cout << "===========================================================\n";
+  }
+
+  void mostrar_historial() {
+    cout << "======== Historial de Procesos Finalizados (Pila) ========"
+         << endl;
+
+    if (historial.esVacia()) {
+      cout << "No hay procesos finalizados.";
+    } else {
+      // recorrer la pila sin destruirla
+      PilaHistorial auxPila;
+      while (!historial.esVacia()) {
+        Proceso p = historial.pop();
+        auxPila.push(p);
+      }
+
+      // Mostrar
+      cout << "" << endl;
+      while (!auxPila.esVacia()) {
+        Proceso p = auxPila.top();
+        auxPila.pop();
+
+        cout << " - PID: " << p.id << " | Nombre: " << p.nombre
+             << " | Prioridad: " << p.prioridad
+             << " | Tiempo Final: " << p.tiempo_restante << endl;
+
+        historial.push(p);
+      }
+    }
+    cout << "==========================================================\n"
+         << endl;
+  }
 };
 
 int main() {
+  Planificador planificador(2); // Quantum = 2 segundos
+  int opcion;
 
-};
+  // Carga inicial de prueba
+  planificador.agregarProceso("Sistema Base", 1, 3);
+  planificador.agregarProceso("Navegador Web", 3, 5);
+  planificador.agregarProceso("Antivirus", 2, 4);
+
+  do {
+    cout << "\n========== SIMULADOR PLANIFICADOR DE PROCESOS ==========\n";
+    cout << "1. Agregar nuevo proceso\n";
+    cout << "2. Ejecutar un ciclo de CPU (Paso a paso)\n";
+    cout << "3. Ejecutar todos los procesos pendientes\n";
+    cout << "4. Ver estado actual de las Colas\n";
+    cout << "5. Ver Historial de Procesos Finalizados (Pila)\n";
+    cout << "6. Deshacer ultimo proceso finalizado (Re-instanciar)\n";
+    cout << "0. Salir\n";
+    cout << "========================================================\n";
+    cout << "Seleccione una opcion: ";
+    cin >> opcion;
+
+    switch (opcion) {
+    case 1: {
+      string nombre;
+      int prioridad, tiempo;
+      cout << "Nombre del proceso: ";
+      cin.ignore();
+      getline(cin, nombre);
+      cout << "Prioridad (1-2: Alta / 3+: Normal): ";
+      cin >> prioridad;
+      cout << "Tiempo de CPU necesario (segundos): ";
+      cin >> tiempo;
+      planificador.agregarProceso(nombre, prioridad, tiempo);
+      break;
+    }
+    case 2:
+      planificador.ejecutar_paso();
+      break;
+    case 3:
+      planificador.ejecutar_todo();
+      break;
+    case 4:
+      planificador.ver_estado_sistema();
+      break;
+    case 5:
+      planificador.mostrar_historial();
+      break;
+    case 6:
+      planificador.deshacer_ultimo();
+      break;
+    case 0:
+      cout << "\nCerrando la simulacion. ¡Hasta luego!\n";
+      break;
+    default:
+      cout << "\nOpcion invalida. Intente de nuevo.\n";
+    }
+  } while (opcion != 0);
+
+  return 0;
+}
