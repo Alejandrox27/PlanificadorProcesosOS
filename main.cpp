@@ -1,9 +1,6 @@
 #include <algorithm>
 #include <iostream>
-#include <queue>
 #include <string>
-#include <vector>
-
 // Simulador de Planificador de Procesos de un sistema operativo
 /*imita el comportamiento del sistema operativo (como Linux o Windows)
  cuando debe decidir qué programa o tarea tiene acceso al procesador (CPU) en
@@ -36,12 +33,12 @@ struct CompararPrioridad {
 };
 
 // 2. Nodo de la Pila que almacena un Proceso
-class NodoPila {
+class Nodo {
 public:
   Proceso proceso;
-  NodoPila *sig;
+  Nodo *sig;
 
-  NodoPila(Proceso p) {
+  Nodo(Proceso p) {
     proceso = p;
     sig = nullptr;
   }
@@ -50,7 +47,7 @@ public:
 // 3. Clase Pila de Historial (LIFO: Last In First Out)
 class PilaHistorial {
 private:
-  NodoPila *cabeza;
+  Nodo *cabeza;
   int tamano;
 
 public:
@@ -69,7 +66,7 @@ public:
 
   // PUSH: Inserta el proceso finalizado en la cima
   void push(Proceso p) {
-    NodoPila *nuevo = new NodoPila(p);
+    Nodo *nuevo = new Nodo(p);
     nuevo->sig = cabeza;
     cabeza = nuevo;
     tamano++;
@@ -81,7 +78,7 @@ public:
       cout << "La pila esta vacia.\n";
       return {-1, "NULO", 0, 0};
     }
-    NodoPila *aux = cabeza;
+    Nodo *aux = cabeza;
     Proceso p = aux->proceso;
     cabeza = cabeza->sig;
     delete aux;
@@ -98,14 +95,172 @@ public:
   }
 
   int obtenerTamano() { return tamano; }
+
+  // Recorrido seguro sin modificar la pila
+  void mostrar() {
+    if (esVacia()) {
+      cout << "   (Pila vacia)\n";
+      return;
+    }
+    Nodo *aux = cabeza;
+    while (aux != nullptr) {
+      cout << "  -> PID: " << aux->proceso.id << " | " << aux->proceso.nombre
+           << " | Prio: " << aux->proceso.prioridad
+           << " | T. Restante: " << aux->proceso.tiempo_restante << "s\n";
+      aux = aux->sig;
+    }
+  }
 };
 
-// 4. Clase que controla todo el proceso de planificacion de tareas
+// 4. COLA CIRCULAR / SIMPLE (FIFO - Hecha a mano)
+class ColaSimple {
+private:
+  Nodo *cabeza;
+  Nodo *ultimo;
+  int tamano;
+
+public:
+  ColaSimple() : cabeza(nullptr), ultimo(nullptr), tamano(0) {}
+
+  ~ColaSimple() {
+    while (!esVacia())
+      pop();
+  }
+
+  bool esVacia() { return cabeza == nullptr; }
+
+  // Inserta siempre al FINAL
+  void push(Proceso p) {
+    Nodo *nuevo = new Nodo(p);
+    if (esVacia()) {
+      cabeza = nuevo;
+      ultimo = nuevo;
+    } else {
+      ultimo->sig = nuevo;
+      ultimo = nuevo;
+    }
+    tamano++;
+  }
+
+  // Extrae siempre del INICIO
+  Proceso pop() {
+    if (esVacia())
+      return {-1, "NULO", 0, 0, 0};
+    Nodo *aux = cabeza;
+    Proceso p = aux->proceso;
+    cabeza = cabeza->sig;
+    if (cabeza == nullptr)
+      ultimo = nullptr;
+    delete aux;
+    tamano--;
+    return p;
+  }
+
+  Proceso front() {
+    if (!esVacia())
+      return cabeza->proceso;
+    return {-1, "NULO", 0, 0, 0};
+  }
+
+  int obtenerTamano() { return tamano; }
+
+  // Recorrido seguro sin modificar la cola
+  void mostrar() {
+    if (esVacia()) {
+      cout << "   (Cola vacia)\n";
+      return;
+    }
+    Nodo *aux = cabeza;
+    while (aux != nullptr) {
+      cout << "  -> PID: " << aux->proceso.id << " | " << aux->proceso.nombre
+           << " | Prio: " << aux->proceso.prioridad
+           << " | T. Restante: " << aux->proceso.tiempo_restante << "s\n";
+      aux = aux->sig;
+    }
+  }
+};
+
+// 5. COLA CON PRIORIDAD (Hecha a mano con Lista Enlazada Ordenada)
+class ColaPrioridad {
+private:
+  Nodo *cabeza;
+  int tamano;
+
+public:
+  ColaPrioridad() : cabeza(nullptr), tamano(0) {}
+
+  ~ColaPrioridad() {
+    while (!esVacia())
+      pop();
+  }
+
+  bool esVacia() { return cabeza == nullptr; }
+
+  // Inserta en ORDEN de prioridad (Menor número = mayor urgencia al frente)
+  void push(Proceso p) {
+    Nodo *nuevo = new Nodo(p);
+
+    // Caso 1: La lista está vacía o el nuevo proceso tiene mayor prioridad que
+    // la cabeza
+    if (esVacia() || p.prioridad < cabeza->proceso.prioridad) {
+      nuevo->sig = cabeza;
+      cabeza = nuevo;
+    }
+    // Caso 2: Buscar la posición correcta dentro de la lista
+    else {
+      Nodo *aux = cabeza;
+      while (aux->sig != nullptr &&
+             aux->sig->proceso.prioridad <= p.prioridad) {
+        aux = aux->sig;
+      }
+      nuevo->sig = aux->sig;
+      aux->sig = nuevo;
+    }
+    tamano++;
+  }
+
+  // Extrae el elemento de mayor prioridad (CABEZA)
+  Proceso pop() {
+    if (esVacia())
+      return {-1, "NULO", 0, 0, 0};
+    Nodo *aux = cabeza;
+    Proceso p = aux->proceso;
+    cabeza = cabeza->sig;
+    delete aux;
+    tamano--;
+    return p;
+  }
+
+  Proceso top() {
+    if (!esVacia())
+      return cabeza->proceso;
+    return {-1, "NULO", 0, 0, 0};
+  }
+
+  int obtenerTamano() { return tamano; }
+
+  // Recorrido seguro sin modificar la cola
+  void mostrar() {
+    if (esVacia()) {
+      cout << "   (Cola de Prioridad vacia)\n";
+      return;
+    }
+    Nodo *aux = cabeza;
+    while (aux != nullptr) {
+      cout << "  -> PID: " << aux->proceso.id << " | " << aux->proceso.nombre
+           << " | Prio: " << aux->proceso.prioridad
+           << " | T. Restante: " << aux->proceso.tiempo_restante << "s\n";
+      aux = aux->sig;
+    }
+  }
+};
+
+// 6. Clase que controla todo el proceso de planificacion de tareas
 class Planificador {
 private:
-  priority_queue<Proceso, vector<Proceso>, CompararPrioridad>
+  ColaPrioridad
       colaPrioridad; // Estructura 1: Cola con Prioridad (Alta urgencia)
-  queue<Proceso>
+  ColaSimple
       colaCircular; // Estructura 2: Cola (Round-Robin para prioridad normal)
   PilaHistorial
       historial; // Estructura 3: Pila (Historial de procesos finalizados)
@@ -134,7 +289,7 @@ public:
   }
 
   void ejecutar_paso() {
-    if (!colaPrioridad.empty()) {
+    if (!colaPrioridad.esVacia()) {
       Proceso actual = colaPrioridad.top();
       colaPrioridad.pop();
 
@@ -155,7 +310,7 @@ public:
         cout << "[+] Proceso '" << actual.nombre << "' FINALIZADO.\n";
       }
 
-    } else if (!colaCircular.empty()) {
+    } else if (!colaCircular.esVacia()) {
       Proceso actual = colaCircular.front();
       colaCircular.pop();
 
@@ -180,7 +335,7 @@ public:
   }
 
   void ejecutar_todo() {
-    while (!colaPrioridad.empty() || !colaCircular.empty()) {
+    while (!colaPrioridad.esVacia() || !colaCircular.esVacia()) {
       ejecutar_paso();
     }
   }
@@ -205,70 +360,28 @@ public:
 
   void ver_estado_sistema() {
     cout << "\n================ ESTADO ACTUAL DEL SISTEMA ================\n";
-
-    // Inspección de Cola de Prioridad
     cout << "[COLA DE PRIORIDAD (Alta Urgencia)] Elementos: "
-         << colaPrioridad.size() << "\n";
-    auto auxPrioridad = colaPrioridad;
-    while (!auxPrioridad.empty()) {
-      Proceso p = auxPrioridad.top();
-      auxPrioridad.pop();
-      cout << "  -> PID: " << p.id << " | " << p.nombre
-           << " | Prio: " << p.prioridad
-           << " | T. Restante: " << p.tiempo_restante << "s\n";
-    }
+         << colaPrioridad.obtenerTamano() << "\n";
+    colaPrioridad.mostrar();
 
-    // Inspección de Cola Circular
-    cout << "\n[COLA CIRCULAR (Round-Robin)] Elementos: " << colaCircular.size()
-         << "\n";
-    auto auxCircular = colaCircular;
-    while (!auxCircular.empty()) {
-      Proceso p = auxCircular.front();
-      auxCircular.pop();
-      cout << "  -> PID: " << p.id << " | " << p.nombre
-           << " | Prio: " << p.prioridad
-           << " | T. Restante: " << p.tiempo_restante << "s\n";
-    }
+    cout << "\n[COLA CIRCULAR (Round-Robin)] Elementos: "
+         << colaCircular.obtenerTamano() << "\n";
+    colaCircular.mostrar();
 
     cout << "\n[PILA DE HISTORIAL] Procesos Finalizados: "
          << historial.obtenerTamano() << "\n";
     if (!historial.esVacia()) {
       Proceso topP = historial.top();
-      cout << "  -> Cima actual: PID " << topP.id << " (" << topP.nombre
-           << ")\n";
+      cout << "  -> Cima actual (Ultimo terminado): PID " << topP.id << " ("
+           << topP.nombre << ")\n";
     }
     cout << "===========================================================\n";
   }
 
   void mostrar_historial() {
-    cout << "======== Historial de Procesos Finalizados (Pila) ========"
-         << endl;
-
-    if (historial.esVacia()) {
-      cout << "No hay procesos finalizados.";
-    } else {
-      // recorrer la pila sin destruirla
-      PilaHistorial auxPila;
-      while (!historial.esVacia()) {
-        Proceso p = historial.pop();
-        auxPila.push(p);
-      }
-
-      // Mostrar
-      cout << "" << endl;
-      while (!auxPila.esVacia()) {
-        Proceso p = auxPila.top();
-        auxPila.pop();
-
-        cout << " - PID: " << p.id << " | Nombre: " << p.nombre
-             << " | Prioridad: " << p.prioridad
-             << " | Tiempo Final: " << p.tiempo_restante << endl;
-
-        historial.push(p);
-      }
-    }
-    cout << "==========================================================\n"
-         << endl;
+    cout << "\n======== HISTORIAL DE PROCESOS FINALIZADOS (PILA) ========\n";
+    historial.mostrar();
+    cout << "===========================================================\n";
   }
 };
 
@@ -324,7 +437,7 @@ int main() {
       planificador.deshacer_ultimo();
       break;
     case 0:
-      cout << "\nCerrando la simulacion. ¡Hasta luego!\n";
+      cout << "\nCerrando la simulacion.\n";
       break;
     default:
       cout << "\nOpcion invalida. Intente de nuevo.\n";
