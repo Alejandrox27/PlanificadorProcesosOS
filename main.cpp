@@ -86,7 +86,7 @@ public:
     return p;
   }
 
-  // TOP / PEEK: Consulta el proceso en la cima sin eliminarlo
+  // TOP: Consulta el proceso en la cima sin eliminarlo
   Proceso top() {
     if (!esVacia()) {
       return cabeza->proceso;
@@ -112,7 +112,7 @@ public:
   }
 };
 
-// 4. COLA CIRCULAR / SIMPLE (FIFO - Hecha a mano)
+// 4. COLA CIRCULAR / SIMPLE (FIFO)
 class ColaSimple {
 private:
   Nodo *cabeza;
