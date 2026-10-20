@@ -331,15 +331,15 @@ public: // funciones publicas
       Proceso actual = colaPrioridad.top();
       colaPrioridad.pop();
 
-      // Imprime el proceso que se está ejecutando
-      cout << "\n[CPU -> EJECUTANDO (ALTA PRIORIDAD)] PID: " << actual.id
-           << " | Nombre: " << actual.nombre
-           << " | Tiempo Restante: " << actual.tiempo_restante << "s\n";
-
       // Calcula el tiempo que se va a ejecutar
       int tiempo_ejecutado = min(quantum, actual.tiempo_restante);
       // Resta el tiempo ejecutado al tiempo restante
       actual.tiempo_restante -= tiempo_ejecutado;
+
+      // Imprime el proceso que se está ejecutando
+      cout << "\n[CPU -> EJECUTANDO (ALTA PRIORIDAD)] PID: " << actual.id
+           << " | Nombre: " << actual.nombre
+           << " | Tiempo Restante: " << actual.tiempo_restante << "s\n";
 
       // Verifica si el proceso terminó
       if (actual.tiempo_restante > 0) {
@@ -360,15 +360,15 @@ public: // funciones publicas
       Proceso actual = colaCircular.top();
       colaCircular.pop();
 
-      // Imprime el proceso que se está ejecutando
-      cout << "\n[CPU -> EJECUTANDO (PRIORIDAD NORMAL)] PID: " << actual.id
-           << " | Nombre: " << actual.nombre
-           << " | Tiempo Restante: " << actual.tiempo_restante << "s\n";
-
       // Calcula el tiempo que se va a ejecutar
       int tiempo_ejecutado = min(quantum, actual.tiempo_restante);
       // Resta el tiempo ejecutado al tiempo restante
       actual.tiempo_restante -= tiempo_ejecutado;
+
+      // Imprime el proceso que se está ejecutando
+      cout << "\n[CPU -> EJECUTANDO (PRIORIDAD NORMAL)] PID: " << actual.id
+           << " | Nombre: " << actual.nombre
+           << " | Tiempo Restante: " << actual.tiempo_restante << "s\n";
 
       // Verifica si el proceso terminó
       if (actual.tiempo_restante > 0) {
