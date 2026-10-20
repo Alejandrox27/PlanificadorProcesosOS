@@ -10,6 +10,7 @@
 // Pilas (Stack)
 // Colas con prioridad (Priority Queue)
 // Colas ciculares (Queue)
+// Listas enlazadas
 
 using namespace std; // simplifica el codigo al no tener que escribir std::
 
