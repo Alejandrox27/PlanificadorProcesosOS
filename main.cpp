@@ -119,7 +119,7 @@ public: // funciones publicas
   }
 };
 
-// COLA CIRCULAR / SIMPLE (FIFO: First In First Out)
+// COLA SIMPLE (FIFO: First In First Out)
 // Se utiliza para agrupar procesos con la misma prioridad, o procesos que no
 // tienen prioridad.
 class ColaSimple {
@@ -285,7 +285,7 @@ private: // variables privadas
   // Estructura 1: Cola con Prioridad (Alta urgencia)
   ColaPrioridad colaPrioridad;
   // Estructura 2: Cola (Prioridad normal)
-  ColaSimple colaCircular;
+  ColaSimple colaSimple;
   // Estructura 3: Pila (Historial)
   PilaHistorial historial;
   // Tiempo de CPU asignado por turno (ej. 2 segundos)
@@ -319,7 +319,7 @@ public: // funciones publicas
       cout << "\n[+] Proceso '" << nombre << "' (PID: " << contadorPID
            << ") agregado a COLA DE PRIORIDAD.\n";
     } else {
-      colaCircular.push(p);
+      colaSimple.push(p);
       cout << "\n[+] Proceso '" << nombre << "' (PID: " << contadorPID
            << ") agregado a COLA SIMPLE.\n";
     }
@@ -356,10 +356,10 @@ public: // funciones publicas
         cout << "[+] Proceso '" << actual.nombre << "' FINALIZADO.\n";
       }
 
-    } else if (!colaCircular.esVacia()) {
+    } else if (!colaSimple.esVacia()) {
       // Si no hay procesos de alta prioridad, se ejecuta uno
-      Proceso actual = colaCircular.top();
-      colaCircular.pop();
+      Proceso actual = colaSimple.top();
+      colaSimple.pop();
 
       // Calcula el tiempo que se va a ejecutar
       int tiempo_ejecutado = min(quantum, actual.tiempo_restante);
@@ -376,7 +376,7 @@ public: // funciones publicas
         // Si no terminó, se vuelve a agregar a la cola de prioridad
         cout << "   -> Quantum agotado. Volviendo al final de la Cola "
                 "Circular...\n";
-        colaCircular.push(actual);
+        colaSimple.push(actual);
       } else {
         // en caso de haber terminado el proceso, se agrega a la PILA
         // HISTORIAL
@@ -390,7 +390,7 @@ public: // funciones publicas
 
   // Ciclo de ejecucion para todos los procesos
   void ejecutar_todo() {
-    while (!colaPrioridad.esVacia() || !colaCircular.esVacia()) {
+    while (!colaPrioridad.esVacia() || !colaSimple.esVacia()) {
       ejecutar_paso();
     }
   }
@@ -412,7 +412,7 @@ public: // funciones publicas
     if (p.prioridad <= 2) {
       colaPrioridad.push(p);
     } else {
-      colaCircular.push(p);
+      colaSimple.push(p);
     }
   }
 
@@ -423,9 +423,8 @@ public: // funciones publicas
          << "\n";
     colaPrioridad.mostrar();
 
-    cout << "\n[COLA SIMPLE] Elementos: " << colaCircular.obtenerTamano()
-         << "\n";
-    colaCircular.mostrar();
+    cout << "\n[COLA SIMPLE] Elementos: " << colaSimple.obtenerTamano() << "\n";
+    colaSimple.mostrar();
 
     cout << "\n[PILA DE HISTORIAL] Procesos Finalizados: "
          << historial.obtenerTamano() << "\n";
