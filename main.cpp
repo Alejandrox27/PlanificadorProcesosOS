@@ -321,7 +321,7 @@ public: // funciones publicas
     } else {
       colaCircular.push(p);
       cout << "\n[+] Proceso '" << nombre << "' (PID: " << contadorPID
-           << ") agregado a COLA CIRCULAR.\n";
+           << ") agregado a COLA SIMPLE.\n";
     }
   }
 
@@ -423,7 +423,7 @@ public: // funciones publicas
          << "\n";
     colaPrioridad.mostrar();
 
-    cout << "\n[COLA CIRCULAR] Elementos: " << colaCircular.obtenerTamano()
+    cout << "\n[COLA SIMPLE] Elementos: " << colaCircular.obtenerTamano()
          << "\n";
     colaCircular.mostrar();
 
